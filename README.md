@@ -2,6 +2,8 @@
 
 把 **Claude Code / OpenAI Codex CLI / Kimi Code CLI** 以及任意其他命令行 agent 的"任务完成"和"需要操作"事件，推送到你的 **iOS（Bark）/ Android（ntfy）手机**。
 
+![AgentNotification 推送示例 1](docs/image1.png)
+
 ## 为什么需要 AgentNotification
 
 跑长任务时常常想离开电脑，但又怕 agent 卡在权限确认上 — Claude Code 自带的桌面通知到不了手机。已有的 Bark/ntfy/Pushover 脚本各自为政：每接入一个 agent 就要重写一份摘要、过滤、退出码处理。本项目把这些黏合代码抽成稳定的子命令，新增 agent 只需配一行 hook 或包一层 `agentnotify wrap`。
@@ -17,20 +19,37 @@
 
 ## 安装
 
+AgentNotification 需要 **Python ≥ 3.11**（使用了标准库 `tomllib`）。推荐先建一个干净的 conda 环境，再在这个环境里安装，避免系统 Python 版本过低或依赖混在一起。
+
 ```bash
-# 推荐：用 pipx 装到隔离环境
-pipx install git+https://github.com/wmzspace/agentnotify
+# 1. 创建并进入 Python 3.11+ 环境
+conda create -n agentnotify python=3.11 -y
+conda activate agentnotify
 
-# 或 pip
-pip install git+https://github.com/wmzspace/agentnotify
+# 2. 更新 pip，并从 GitHub 安装
+python -m pip install -U pip
+python -m pip install git+https://github.com/wmzspace/AgentNotification
 
-# 或源码 + 软链
-git clone https://github.com/wmzspace/agentnotify.git
-cd AgentNotification
-pip install -e .
+# 3. 确认命令可用
+agentnotify --help
 ```
 
-需要 Python ≥ 3.11（用了标准库 `tomllib`）。`questionary` 会作为依赖自动装上。
+如果要从源码安装或参与开发：
+
+```bash
+git clone https://github.com/wmzspace/AgentNotification.git
+cd AgentNotification
+conda create -n agentnotify python=3.11 -y
+conda activate agentnotify
+python -m pip install -U pip
+python -m pip install -e .
+```
+
+`questionary` 会作为依赖自动安装。已经有可靠的 Python 3.11+ 环境时，也可以用 `pipx` 安装到隔离环境：
+
+```bash
+pipx install --python python3.11 git+https://github.com/wmzspace/AgentNotification
+```
 
 ## 首次配置
 
@@ -63,6 +82,8 @@ export AGENTNOTIFY_BACKENDS=bark,ntfy   # 可选，缺省按存在的 key 推断
 agentnotify send "测试" "Hello from AgentNotification"
 agentnotify send --dry-run "测试" "看请求体而不真发"
 ```
+
+![AgentNotification 推送示例 2](docs/image2.png)
 
 ## 接入各 agent
 

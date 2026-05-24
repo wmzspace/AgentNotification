@@ -27,8 +27,8 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/wmzspace/agentnotify"
-Issues = "https://github.com/wmzspace/agentnotify/issues"
+Homepage = "https://github.com/wmzspace/AgentNotification"
+Issues = "https://github.com/wmzspace/AgentNotification/issues"
 
 [project.scripts]
 agentnotify = "agentnotify.cli:main"
