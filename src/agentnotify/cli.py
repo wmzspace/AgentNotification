@@ -162,7 +162,10 @@ def cmd_init(args: argparse.Namespace) -> int:
         print("\n(跳过 agent 配置注入)")
 
     print("\nTry it:")
-    print("  agentnotify send 'Hello from AgentNotification' 'Setup complete'")
+    # Double quotes work in cmd.exe / PowerShell / bash / zsh — single
+    # quotes are *not* string delimiters in Windows cmd, so a single-quoted
+    # example would print literal apostrophes there.
+    print('  agentnotify send "Hello from AgentNotification" "Setup complete"')
     return 0
 
 
@@ -179,32 +182,38 @@ def cmd_send(args: argparse.Namespace) -> int:
 
 
 def cmd_hook(args: argparse.Namespace) -> int:
-    cfg = config_mod.load()
-    notif: Notification | None
-    if args.kind == "claude-stop":
-        notif = hooks.claude_stop(sys.stdin.read())
-    elif args.kind == "claude-notification":
-        notif = hooks.claude_notification(sys.stdin.read())
-    elif args.kind == "claude-permission":
-        notif = hooks.claude_permission(sys.stdin.read())
-    elif args.kind == "kimi-stop":
-        notif = hooks.kimi_stop(sys.stdin.read())
-    elif args.kind == "kimi-notification":
-        notif = hooks.kimi_notification(sys.stdin.read())
-    elif args.kind == "codex-stop":
-        notif = hooks.codex_stop(sys.stdin.read())
-    elif args.kind == "codex-permission":
-        notif = hooks.codex_permission(sys.stdin.read())
-    elif args.kind == "codex":
-        notif = hooks.codex(args.payload or "")
-    else:
-        print(f"unknown hook kind: {args.kind}", file=sys.stderr)
-        return 2
+    # Hooks must NEVER write to stderr or return non-zero — agents surface
+    # both to the user (Codex captures stderr into its UI; Claude logs hook
+    # failures). We used to rely on a shell tail like `2>/dev/null || true`
+    # at the call site, but that's POSIX-only (Windows cmd has no `/dev/null`
+    # and no `true`), so we move the suppression into Python itself: catch
+    # everything, swallow it, return 0.
+    try:
+        cfg = config_mod.load()
+        notif: Notification | None
+        if args.kind == "claude-stop":
+            notif = hooks.claude_stop(sys.stdin.read())
+        elif args.kind == "claude-notification":
+            notif = hooks.claude_notification(sys.stdin.read())
+        elif args.kind == "claude-permission":
+            notif = hooks.claude_permission(sys.stdin.read())
+        elif args.kind == "kimi-stop":
+            notif = hooks.kimi_stop(sys.stdin.read())
+        elif args.kind == "kimi-notification":
+            notif = hooks.kimi_notification(sys.stdin.read())
+        elif args.kind == "codex-stop":
+            notif = hooks.codex_stop(sys.stdin.read())
+        elif args.kind == "codex-permission":
+            notif = hooks.codex_permission(sys.stdin.read())
+        elif args.kind == "codex":
+            notif = hooks.codex(args.payload or "")
+        else:
+            return 0  # unknown kind — silently no-op, never break the agent
 
-    if notif is None:
-        return 0  # event filtered or empty — silently succeed
-    # Hooks should never break the agent: swallow errors with quiet=True.
-    _dispatch(cfg, notif, dry_run=args.dry_run, quiet=True)
+        if notif is not None:
+            _dispatch(cfg, notif, dry_run=args.dry_run, quiet=True)
+    except Exception:
+        pass
     return 0
 
 

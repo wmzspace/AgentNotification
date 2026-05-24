@@ -130,13 +130,17 @@ tags = ["robot"]
 def write_initial(path: Path, *, backends: list[str], bark_key: str, bark_server: str,
                   ntfy_topic: str, ntfy_server: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    # TOML spec mandates UTF-8 — write_text defaults to the OS locale
+    # encoding on Windows (GBK/CP936 on zh-CN), which then fails to
+    # round-trip through tomllib.load. Force UTF-8 here and everywhere
+    # else we touch agent config files.
     path.write_text(INIT_TEMPLATE.format(
         backends=backends,
         bark_key=bark_key,
         bark_server=bark_server,
         ntfy_topic=ntfy_topic,
         ntfy_server=ntfy_server,
-    ))
+    ), encoding="utf-8")
     try:
         path.chmod(0o600)
     except OSError:

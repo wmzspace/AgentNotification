@@ -27,7 +27,11 @@ def _agentnotify_bin() -> str:
 
 
 def _make_entry(suffix: str, bin_path: str) -> dict:
-    cmd = f"{bin_path} hook claude-{suffix} 2>/dev/null || true"
+    # Wrap bin_path in double quotes — works in cmd / PowerShell / bash /
+    # zsh and protects against spaces (e.g. C:\Program Files\...). No shell
+    # tail (`2>/dev/null || true`) because `cmd_hook` itself is bulletproof
+    # now, and POSIX-only tails would explode on Windows cmd.
+    cmd = f'"{bin_path}" hook claude-{suffix}'
     return {
         "matcher": "",
         "hooks": [{"type": "command", "command": cmd, "async": True}],
@@ -61,7 +65,7 @@ def _repath_event(event_list: list, suffix: str, bin_path: str) -> bool:
     (swallowed by `|| true`). We rewrite to the absolute path.
     """
     needle = f"hook claude-{suffix}"
-    correct = f"{bin_path} hook claude-{suffix} 2>/dev/null || true"
+    correct = f'"{bin_path}" hook claude-{suffix}'
     changed = False
     for matcher in event_list:
         if not isinstance(matcher, dict):
@@ -89,7 +93,7 @@ def install_claude() -> InstallResult:
     data: dict = {}
     if target.exists():
         try:
-            data = json.loads(target.read_text())
+            data = json.loads(target.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
             data = {}
 
@@ -119,7 +123,9 @@ def install_claude() -> InstallResult:
         hooks[event_key].append(_make_entry(suffix, bin_path))
 
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+    target.write_text(
+        json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
 
     notes: list[str] = []
     if missing:

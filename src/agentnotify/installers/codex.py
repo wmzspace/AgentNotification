@@ -37,13 +37,17 @@ def _toml_basic_escape(s: str) -> str:
 
 
 def _stop_block(bin_path: str) -> str:
+    # Quote bin_path so the shell sees `"<path>" hook codex-stop` (handles
+    # spaces on every platform). The literal `"` chars get TOML-escaped as
+    # `\"`. No `2>/dev/null || true` tail — POSIX-only, and `cmd_hook` now
+    # swallows its own errors so the suppression is unnecessary.
     bin_esc = _toml_basic_escape(bin_path)
     return f"""\
 [[hooks.Stop]]
 
 [[hooks.Stop.hooks]]
 type = "command"
-command = "{bin_esc} hook codex-stop 2>/dev/null || true"
+command = "\\"{bin_esc}\\" hook codex-stop"
 timeout = 30
 """
 
@@ -55,7 +59,7 @@ def _perm_block(bin_path: str) -> str:
 
 [[hooks.PermissionRequest.hooks]]
 type = "command"
-command = "{bin_esc} hook codex-permission 2>/dev/null || true"
+command = "\\"{bin_esc}\\" hook codex-permission"
 timeout = 30
 """
 
@@ -106,9 +110,12 @@ def _repath_command(text: str, suffix: str, bin_path: str) -> tuple[str, bool]:
     match bin_path, so this is safely idempotent.
     """
     bin_esc = _toml_basic_escape(bin_path)
-    correct = f'command = "{bin_esc} hook {suffix} 2>/dev/null || true"'
+    correct = f'command = "\\"{bin_esc}\\" hook {suffix}"'
+    # `.*` (rather than `[^"]*`) so the pattern matches both the old format
+    # `"<bin> hook X 2>/dev/null || true"` and the new format
+    # `"\"<bin>\" hook X"` with TOML-escaped inner quotes.
     pattern = re.compile(
-        r'^command\s*=\s*"[^"]*hook ' + re.escape(suffix) + r'[^"]*"\s*$',
+        r'^command\s*=\s*".*hook ' + re.escape(suffix) + r'.*"\s*$',
         re.MULTILINE,
     )
 
@@ -136,7 +143,7 @@ def install_codex() -> InstallResult:
         )
 
     bin_path = _agentnotify_bin()
-    existing = target.read_text() if target.exists() else ""
+    existing = target.read_text(encoding="utf-8") if target.exists() else ""
 
     has_stop = "hook codex-stop" in existing
     has_perm = "hook codex-permission" in existing
@@ -186,7 +193,7 @@ def install_codex() -> InstallResult:
     body = body.rstrip() + "\n"
 
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(body)
+    target.write_text(body, encoding="utf-8")
 
     return InstallResult(
         agent="codex",

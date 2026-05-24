@@ -106,7 +106,7 @@ def install_kimi() -> InstallResult:
             detail="~/.kimi/ missing — install Kimi Code CLI first",
         )
 
-    existing = target.read_text() if target.exists() else ""
+    existing = target.read_text(encoding="utf-8") if target.exists() else ""
 
     # The "broken" state we most need to recover from is the one we ourselves
     # created in an earlier release: a top-level `hooks = []` AND `[[hooks]]`
@@ -143,8 +143,11 @@ def install_kimi() -> InstallResult:
         )
 
     bin_path = _agentnotify_bin()
-    stop_cmd = f"{bin_path} hook kimi-stop 2>/dev/null || true"
-    notif_cmd = f"{bin_path} hook kimi-notification 2>/dev/null || true"
+    # Quote bin_path so paths with spaces survive shell parsing on every
+    # platform. No `2>/dev/null || true` tail — `cmd_hook` already swallows
+    # errors and that tail is POSIX-only (Windows cmd has neither).
+    stop_cmd = f'"{bin_path}" hook kimi-stop'
+    notif_cmd = f'"{bin_path}" hook kimi-notification'
 
     kept: list[dict] = []
     has_correct_stop = False
@@ -206,7 +209,7 @@ def install_kimi() -> InstallResult:
     if not new_text.endswith("\n"):
         new_text += "\n"
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(new_text)
+    target.write_text(new_text, encoding="utf-8")
 
     notes = ["rewrote top-level `hooks = [...]` (Kimi rejects [[hooks]] when `hooks` is already a scalar)"]
     if has_broken_blocks:
