@@ -1,0 +1,33 @@
+# AgentNotification configuration
+#
+# Copy this file to ~/.config/agentnotify/config.toml (or run `agentnotify init`)
+# and fill in the credentials for the backends you want to enable.
+#
+# Environment variables override file values:
+#   AGENTNOTIFY_BARK_KEY       — Bark device key
+#   AGENTNOTIFY_BARK_SERVER    — Bark server (default https://api.day.app)
+#   AGENTNOTIFY_NTFY_TOPIC     — ntfy topic name
+#   AGENTNOTIFY_NTFY_SERVER    — ntfy server (default https://ntfy.sh)
+#   AGENTNOTIFY_NTFY_TOKEN     — optional bearer token for private servers
+#   AGENTNOTIFY_BACKENDS       — comma list, e.g. "bark,ntfy" to override `backends`
+
+# Which backends to dispatch to. Order does not matter; sends fan out.
+backends = ["bark"]   # or ["ntfy"], or ["bark", "ntfy"]
+
+[bark]
+# Get your device key from the Bark iOS app.
+device_key = "YOUR_BARK_DEVICE_KEY"
+server = "https://api.day.app"
+# Default icon for `agentnotify send` (manual sends). Per-agent hooks
+# override this with the matching Claude / Codex / Kimi favicon.
+icon = ""            # empty → Bark's default app icon
+sound = ""           # e.g. "minuet"
+group = "agent"
+
+[ntfy]
+# Topic acts as a password — pick something hard to guess if you use ntfy.sh.
+topic = "YOUR_NTFY_TOPIC"
+server = "https://ntfy.sh"
+# token = "tk_xxx"   # only for private/self-hosted servers
+priority = 3         # 1 (min) — 5 (max). 4 = high, 5 = urgent.
+tags = ["robot"]

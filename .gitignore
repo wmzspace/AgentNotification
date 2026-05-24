@@ -1,0 +1,26 @@
+# Local config that may contain secrets
+config.toml
+.agentnotify.toml
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
+
+# claude-mem auto-injected context (per-directory)
+CLAUDE.md
+**/CLAUDE.md

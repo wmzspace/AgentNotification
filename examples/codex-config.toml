@@ -1,0 +1,23 @@
+# Append this to the end of ~/.codex/config.toml
+# (array-of-tables must come AFTER any inline keys / regular [table] blocks).
+#
+# Also make sure your [features] table has `hooks = true` — Codex 0.133+
+# ignores the legacy `codex_hooks = true` flag, so any [[hooks.*]] tables
+# you declare are scanned but events never route to them.
+
+[features]
+hooks = true
+
+[[hooks.Stop]]
+
+[[hooks.Stop.hooks]]
+type = "command"
+command = "agentnotify hook codex-stop 2>/dev/null || true"
+timeout = 30
+
+[[hooks.PermissionRequest]]
+
+[[hooks.PermissionRequest.hooks]]
+type = "command"
+command = "agentnotify hook codex-permission 2>/dev/null || true"
+timeout = 30
