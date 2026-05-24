@@ -52,6 +52,30 @@ _HOOK_TARGETS = (
 )
 
 
+def _repath_event(event_list: list, suffix: str, bin_path: str) -> bool:
+    """In-place upgrade any `<x> hook claude-<suffix>` command in event_list
+    to use bin_path. Returns True if any command string changed.
+
+    Claude's hook subprocess doesn't inherit conda/pyenv activation either, so
+    bare `agentnotify hook ...` injected by older versions silently fails
+    (swallowed by `|| true`). We rewrite to the absolute path.
+    """
+    needle = f"hook claude-{suffix}"
+    correct = f"{bin_path} hook claude-{suffix} 2>/dev/null || true"
+    changed = False
+    for matcher in event_list:
+        if not isinstance(matcher, dict):
+            continue
+        for h in matcher.get("hooks", []):
+            if not isinstance(h, dict):
+                continue
+            cmd = h.get("command", "")
+            if needle in cmd and cmd != correct:
+                h["command"] = correct
+                changed = True
+    return changed
+
+
 def install_claude() -> InstallResult:
     target = SETTINGS_PATH
     if not CLAUDE_DIR.exists():
@@ -73,12 +97,16 @@ def install_claude() -> InstallResult:
     bin_path = _agentnotify_bin()
 
     missing: list[tuple[str, str]] = []
+    repathed: list[str] = []
     for suffix, event_key in _HOOK_TARGETS:
         event_list = hooks.setdefault(event_key, [])
         if not _hook_event_has_agentnotify(event_list, f"claude-{suffix}"):
             missing.append((suffix, event_key))
+            continue
+        if _repath_event(event_list, suffix, bin_path):
+            repathed.append(event_key)
 
-    if not missing:
+    if not missing and not repathed:
         return InstallResult(
             agent="claude",
             status=InstallStatus.ALREADY_PRESENT,
@@ -93,11 +121,15 @@ def install_claude() -> InstallResult:
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
 
-    detail = f"added: {', '.join(k for _, k in missing)}"
+    notes: list[str] = []
+    if missing:
+        notes.append(f"added: {', '.join(k for _, k in missing)}")
+    if repathed:
+        notes.append(f"rewrote {', '.join(repathed)} command to absolute path")
     return InstallResult(
         agent="claude",
         status=InstallStatus.INSTALLED,
         target=target,
         backup=backup,
-        detail=detail,
+        detail="; ".join(notes),
     )
