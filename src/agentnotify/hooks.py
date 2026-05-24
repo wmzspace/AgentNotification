@@ -55,7 +55,12 @@ def last_assistant_message(transcript_path: str) -> str | None:
     if not transcript_path or not os.path.exists(transcript_path):
         return None
     try:
-        with open(transcript_path) as f:
+        # Claude Code writes transcripts as UTF-8 JSONL. Without an explicit
+        # encoding, Python falls back to the OS locale on Windows (GBK/CP936
+        # on zh-CN), and any non-ASCII char in the assistant text raises
+        # UnicodeDecodeError — which the outer hook's broad except then
+        # swallows, so the notification silently never fires.
+        with open(transcript_path, encoding="utf-8") as f:
             lines = f.readlines()
     except OSError:
         return None
