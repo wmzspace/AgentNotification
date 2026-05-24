@@ -161,6 +161,20 @@ agentnotify wrap [--label LABEL] -- CMD ARGS...
 - **iOS 默认只走 Bark**。Apple 后台限制让 ntfy 公共服务的横幅推送严重不可靠,init 直接屏蔽这个选项,避免新用户踩坑。
 - **极小的依赖面**。除 `questionary`(交互式选择器)外仅用 Python 3.11+ 标准库,网络全走 `urllib`,TOML 解析用 `tomllib`。
 
+## Android ntfy 的常见坑
+
+如果你在 Android ntfy App 里看到红色 `Software caused connection abort` / `SocketException` 之类的报错 —— **这通常不是 agentnotify 的问题**。`agentnotify send` 已经把消息 POST 到 ntfy 服务器,推送是否抵达手机要看客户端那条长连接是否还活着。常见原因和处理:
+
+- **省电策略杀后台连接（最高频）**。国产 ROM(MIUI / ColorOS / HarmonyOS / EMUI / Magic OS …) 默认会冻结 ntfy 的后台进程。解决:系统设置 → 应用管理 → ntfy → 电池/省电 → 设为"无限制"/"允许后台活动"/"允许自启动"，并在"最近任务"里把 ntfy 锁住。这一步能解决 90% 的"漏推送"。
+- **公共 `ntfy.sh` 会主动断闲置连接**。客户端重连后会拉取 ~12h 内的离线消息,所以**红色报错出现 ≠ 通知会丢**,只是连接掉了一瞬间。如果通知最终能收到,无视即可。
+- **网络切换**(4G ↔ WiFi、地铁信号差)也会触发同款 abort,同样靠重连恢复。
+- **真的丢消息怎么办**:
+  1. 在 ntfy App → Settings → Connection protocol 切到 **Instant delivery (WebSocket)**,并确保 App 拿到了不受限的电池权限。
+  2. 长期方案:自建 ntfy server(放在你常开的 NAS / VPS / 家庭服务器),延迟和稳定性都远好于公共 `ntfy.sh`,然后把 `~/.config/agentnotify/config.toml` 的 `[ntfy].server` 改成自建地址即可。
+  3. 退路:`backends = ["ntfy", "bark"]` 双通道并发推,任一条到达就算成功。
+
+判断到底是 agentnotify 还是 ntfy 的问题:跑 `agentnotify send --dry-run "x" "y"`,看打印的请求体合不合理;再去掉 `--dry-run` 真发一次,服务端 200 就说明 agentnotify 这边没毛病,后续都是客户端/网络/省电的事。
+
 ## 许可证
 
 MIT
